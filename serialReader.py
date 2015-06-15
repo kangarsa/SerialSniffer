@@ -1,33 +1,55 @@
 import serial
+import serialdb
+import dataParser
+from optparse import OptionParser
 
-s_port = '/dev/pts/13'
-b_rate = 9600
-t_out = 0.1
+parser = OptionParser()
+parser.add_option("-p", "--port", 
+    action="store", type="string", default="/dev/pts/12")
+parser.add_option("-b", "--baudrate", 
+    action="store", type="int", default="9600")
+parser.add_option("-t", "--timeout", 
+    action="store", type="float", default=0.1)
+parser.add_option("-f", "--jsonfile", 
+    action="store", type="string", default="data.json")
+parser.add_option("-l", "--hostdb", 
+    action="store", type="string", default="localhost")
+parser.add_option("-u", "--userdb", 
+    action="store", type="string", default="serial")
+parser.add_option("-i", "--passworddb", 
+    action="store", type="string", default="serial")
+parser.add_option("-n", "--database", 
+    action="store", type="string", default="serial")
+parser.add_option("-s", "--unixsocket", 
+    action="store", type="string", default="/opt/lampp/var/mysql/mysql.sock")
+
+(options, args) = parser.parse_args()
+
+s_port = options.port
+b_rate = options.baudrate
+t_out = options.timeout
+json_file = options.jsonfile
+host = options.hostdb
+user = options.userdb
+passwd = options.passworddb
+db = options.database
+unix_socket = options.unixsocket
 
 #method for reading incoming bytes on serial
 def read_serial(ser):
     buf = ''
     while True:
-        inp = ser.read(500) #read a byte
-#        print inp.encode("hex") #gives me the correct bytes, each on a newline
+        inp = ser.read(500) #read 500 bytes or do timeout
         buf = buf + inp #accumalate the response
         if buf != '':
             return buf
 
-def checksum(bytes):
-    suma = 0
-    for b in bytes:
-        suma += ord(b)
-    return suma
-
 #open serial
 ser = serial.Serial(port=s_port,baudrate=b_rate,timeout=t_out)
+db = serialdb.connect(host,user,passwd,db,unix_socket)
+cursor = db.cursor()
 
 while True:
-
-#    command = '\x05\x06\x40\x00\x02\x05\xF6\x5C' #should come from user input
-#    print "TX: "
-#    ser.write(command)
     rx = read_serial(ser)
 
     lineOrd = ""
@@ -39,5 +61,8 @@ while True:
     print lineOrd
     print "RX as Hexadecimal:"
     print lineHex
-    print "Suma:",checksum(rx[:-2])
+    print "Suma:",dataParser.checksum(rx[:-2])
     print "\n"
+    dataParser.saveJson(dataParser.generateJson(rx),json_file)
+    serialdb.save(db,cursor,rx)
+
