@@ -1,5 +1,5 @@
 import serial
-import serialdb
+#import serialdb
 import dataParser
 from optparse import OptionParser
 
@@ -46,8 +46,8 @@ def read_serial(ser):
 
 #open serial
 ser = serial.Serial(port=s_port,baudrate=b_rate,timeout=t_out)
-db = serialdb.connect(host,user,passwd,db,unix_socket)
-cursor = db.cursor()
+#db = serialdb.connect(host,user,passwd,db,unix_socket)
+#cursor = db.cursor()
 
 while True:
     rx = read_serial(ser)
@@ -64,5 +64,5 @@ while True:
     print "Suma:",dataParser.checksum(rx[:-2])
     print "\n"
     dataParser.saveJson(dataParser.generateJson(rx),json_file)
-    serialdb.save(db,cursor,rx)
+#    serialdb.save(db,cursor,rx)
 

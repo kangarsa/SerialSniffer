@@ -1,3 +1,6 @@
+## Este programa debería simular el funcionamiento de los inversores de los paneles solares
+## al conectarse con el cliente.
+
 import serial
 import time
 
