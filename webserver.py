@@ -1,7 +1,18 @@
 from BaseHTTPServer import HTTPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
 from optparse import OptionParser
+from urlparse import parse_qs
 import json
+import MySQLdb
+import dataParser
+
+cnx = MySQLdb.connect(host="localhost", # your host, usually localhost
+                    user="serial", # your username
+                    passwd="serial", # your password
+                    db="serial",
+                    unix_socket="/opt/lampp/var/mysql/mysql.sock") # name of the data base
+# cnx = mysql.connector.connect(user='serial', password='serial', database='serial')
+cursor = cnx.cursor()
 
 parser = OptionParser()
 parser.add_option("-p", "--port", 
@@ -16,18 +27,31 @@ json_file = options.jsonfile
 class MyRequestHandler (BaseHTTPRequestHandler) :
     
     def do_GET(self) :
+        o = parse_qs(self.path[1:])
+        #send response code:
+        self.send_response(200)
+        #send headers:
+        self.send_header("Content-type:", "text/html")
+        # send a blank line to end headers:
+        self.wfile.write("\n")
+        cursor = cnx.cursor()
         with open(json_file) as data_file:    
             data = json.load(data_file)
-        if self.path == "/data" :
-            #send response code:
-            self.send_response(200)
-            #send headers:
-            self.send_header("Content-type:", "text/html")
-            # send a blank line to end headers:
-            self.wfile.write("\n")
-
+        if 'actual' == self.path[1:7]:
             #send response:
-            json.dump(data, self.wfile)
+            query = ("SELECT * FROM lecturas ORDER BY id DESC LIMIT 1")
+            cursor.execute(query)
+            response = ""
+            for (iden,ts,value) in cursor:
+                response = "id: {}, fecha: {:%d %b %Y}, value: {}".format(iden,ts,value)                
+                #self.wfile.write(response)
+                v = dataParser.generateJson(value)
+                self.wfile.write(v)
+            cursor.close()
+            #json.dump(data, self.wfile)
+        elif 'historico' in self.path[1:10]:
+            #???
+            print "hola"
 
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')

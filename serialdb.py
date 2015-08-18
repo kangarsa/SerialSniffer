@@ -11,5 +11,5 @@ def cursor(conn):
 	return conn.cursor()
 
 def save(conn,cursor,bytes):
-	cursor.execute('INSERT INTO  `reads` (  `value` ) VALUES ( %s )', bytes)
+	cursor.execute('INSERT INTO  `lecturas` (  `value` ) VALUES ( %s )', bytes)
 	conn.commit()

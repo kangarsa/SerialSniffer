@@ -6,7 +6,7 @@ def bytes_to_int(bytes): #transforma a hexadecimal cadenas de largas, para 1 byt
 def generateJson(bytes):
     data = json.dumps({
     	"a": ord(bytes[12]), 
-    	"b": bytes_to_int(bytes[13:15]), 
+    	"b": bytes_to_int(bytes[22:24]), 
     	"temperature": bytes_to_int(bytes[9:11])/10.0, 
     	"checksum": check_checksum(bytes), 
     	"length": check_length(bytes)
