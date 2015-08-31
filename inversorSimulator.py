@@ -1,10 +1,11 @@
+# coding=utf-8
 import serial
 import time
 
 class InversorSimulator () :
   state = 0
   msg_index = 0
-  port = "/dev/pts/12"
+  port = "/dev/pts/10"
   baud_rate = 9600
   timeout = 0.1
 
@@ -108,7 +109,7 @@ class InversorSimulator () :
       buf = buf + inp #accumalate the response
       print "-------"+buf
       print len(buf)
-      print self.handshake_monitor[self.msg_index]
+      print "esperando: "+self.handshake_monitor[self.msg_index]
       print len(self.handshake_monitor[self.msg_index])
       if len(buf) > 7:
         if buf[0:8] != "[aa][aa]":
@@ -127,7 +128,7 @@ class InversorSimulator () :
 
 inversor = InversorSimulator()
 
-inversor.iniciarlizar( "/dev/pts/12" , 9600, 0.1 )
+inversor.iniciarlizar( "/dev/pts/10" , 9600, 0.1 )
 
 inversor.work_forever()
 

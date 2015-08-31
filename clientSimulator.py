@@ -2,7 +2,7 @@
 import serial
 import time
 
-s_port = "/dev/pts/9"
+s_port = "/dev/pts/6"
 b_rate = 9600
 t_out = 0.1
 
@@ -58,6 +58,7 @@ while True:
 				print m
 				ser.write(m)
 			# espero mensajes de la vía actual
+			print "esperando respuesta handshake[",way,"]"
 			rx = read_serial(ser)
 			print rx
 			# si el mensaje no es el esperado
@@ -67,7 +68,7 @@ while True:
 				print "conn_state: ", 0
 			way+=1
 		# si ya es el último mensaje
-		if way == len(handshake_recieve) and conn_state == 1:
+		if way == len(handshake_recieve)-1 and conn_state == 1:
 			# se estableció conexion correctamente
 			conn_state = 2
 	elif conn_state == 2:
