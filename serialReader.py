@@ -1,11 +1,11 @@
 import serial
-import serialdb
+#import serialdb
 import dataParser
 from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option("-p", "--port", 
-    action="store", type="string", default="/dev/pts/12")
+    action="store", type="string", default="/dev/ttyS0")
 parser.add_option("-b", "--baudrate", 
     action="store", type="int", default="9600")
 parser.add_option("-t", "--timeout", 
@@ -46,12 +46,12 @@ def read_serial(ser):
 
 #open serial
 ser = serial.Serial(port=s_port,baudrate=b_rate,timeout=t_out)
-db = serialdb.connect(host,user,passwd,db,unix_socket)
-cursor = db.cursor()
+#db = serialdb.connect(host,user,passwd,db,unix_socket)
+#cursor = db.cursor()
 
 while True:
     rx = read_serial(ser)
-
+ PWNED!INV
     lineOrd = ""
     lineHex = ""
     for byte in rx:
@@ -63,6 +63,6 @@ while True:
     print lineHex
     print "Suma:",dataParser.checksum(rx[:-2])
     print "\n"
-    dataParser.saveJson(dataParser.generateJson(rx),json_file)
-    serialdb.save(db,cursor,rx)
+    #dataParser.saveJson(dataParser.generateJson(rx),json_file)
+    #serialdb.save(db,cursor,rx)
 

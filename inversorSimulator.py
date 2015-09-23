@@ -1,13 +1,24 @@
 # coding=utf-8
 import serial
 import time
+import binascii
+
+
+def read_serial(ser):
+  buf = ''
+  while True:
+    inp = ser.read(500) #read 500 bytes or do timeout
+    buf = buf + inp #accumalate the response
+    if buf != '':
+      return buf
 
 class InversorSimulator () :
   state = 0
   msg_index = 0
-  port = "/dev/pts/10"
+  port = "/dev/ttyS0"
   baud_rate = 9600
   timeout = 0.1
+  handshake_finished = False
 
   strategy = "static"
 
@@ -60,6 +71,7 @@ class InversorSimulator () :
     self.timeout = timeout
     state = 0
     self.serial = serial.Serial(port=port,baudrate=baud_rate,timeout=timeout)
+    print "abrio el puerto"
     return ""
 
   def getHandshakeMessageFor(self, msg):
@@ -100,35 +112,102 @@ class InversorSimulator () :
 
   def sendMessage(self, msg):
     self.serial.write(msg)
-
-  #method for reading incoming bytes on serial
+    
   def read_serial(self, ser):
-    buf = ''
-    while True:
-      inp = ser.read(1) #read 1 bytes or do timeout
-      buf = buf + inp #accumalate the response
-      print "-------"+buf
-      print len(buf)
-      print "esperando: "+self.handshake_monitor[self.msg_index]
-      print len(self.handshake_monitor[self.msg_index])
-      if len(buf) > 7:
-        if buf[0:8] != "[aa][aa]":
-          buf = ''
-      if inp == '' or buf in self.monitor_messages:
-        # recibe nada o llegó uno de los esperados
-        return buf
+    rx = read_serial(ser)
+    return rx
+  
+  def getNextFor(self,x):
+    handshake_recieve = [
+    #aaaa0000010000800a3131313131313131202003a7
+    #aaaa0000010000800a50574e454421212120200400
+    #aaaa00010100018340312020343630305a302e30335056203436303020202020202020202050484f454e495854454320202020202031313131313131312020202020202020343530300e28
+    #aaaa00010100018340312020343630305a302e30335056203436303020202020202020202050484f454e495854454320202020202050574e45442121212020202020202020343530300e81
+      ["aaaa0000010000800a50574e454421212120200400"],
+      ["aaaa0000010000800a50574e454421212120200400"],
+      ["aaaa000101000081010601de"],
+      ["aaaa00010100018340312020343630305a302e30335056203436303020202020202020202050484f454e495854454320202020202050574e45442121212020202020202020343530300e81"],
+      ["aaaa0001010001801b000102030405060d4041424344454748494a4c78797a7b7c7d7e7f08ed"],
+      ["aaaa000101000181064041444546470375"],
+      ["aaaa0001010001840c05dc001407a809e2132413ec05ac"]
+    ]
+    i = 0
+    if x == "[aa][aa][1][0][0][0][0][0][0][1][55]":
+        i = 1
+        #[aa][aa][1][0][0][0][0][1][b][50][57][4e][45][44][21][21][21][20][20][1][3][83]
+        #aaaa0100000000010b50574e4544212121202001 -> 383
+    elif x == "[aa][aa][1][0][0][0][0][1][b][50][57][4e][45][44][21][21][21][20][20][1][3][83]":
+        i = 2
+    elif x == "[aa][aa][1][0][0][1][1][3][0][1][5a]":
+        i = 3
+    elif x == "[aa][aa][1][0][0][1][1][0][0][1][57]":
+        i = 4
+    elif x == "[aa][aa][1][0][0][1][1][1][0][1][58]":
+        i = 5
+    elif x == "[aa][aa][1][0][0][1][1][4][0][1][5b]":
+        i = 6
+        self.handshake_finished = True
+    print "i es : ",i
+    return handshake_recieve[i][0]
+    
+  def getDataNextFor(self,x):
+    data_recieve = [
+      ["aaaa0001010001823601ab00000aa40a9b0000003c003c03ab00000095083313900c7300000001b2c40000193b00010000000000000000000000000000000008f2"]
+    ]
+    i = 0
+    if x == "[aa][aa][1][0][0][1][1][2][0][1][59]":
+		return data_recieve[i][0]
 
   def work_forever(self):
+    """
+    q = "aaaa0000010000800a3131313131313131202003a7"
+    #d = b'\x0F'
+    #d = "ff"
+    #print d
+    hex_data = q.decode("hex")
+    print hex_data
+    #x = map(ord, hex_data)
+    #print x
+    self.serial.write(bytearray(q.decode("hex")))
+    """
+#    q = "aaaa0000010000800a3131313131313131202003a7"
+    termino = False
     while True:
+      print "entro al while"
       rx = self.read_serial(self.serial)
       print "lectura completa: "+rx
-      self.processMessage(rx)
-      time.sleep(1)
+      lineOrd = ""
+      lineHex = ""
+      for byte in rx:
+#        lineOrd += "["+str(ord(byte))+"]"
+        lineHex += "["+str(hex(ord(byte))[2:])+"]"
+#      print "RX as Ordinal:"
+#      print lineOrd
+      print "RX as Hexadecimal:"
+      print lineHex
+      #self.processMessage(rx)
+      sig = self.getNextFor(lineHex)
+      print self.handshake_finished
+      print termino
+      if not termino:
+        lineHex = ""
+        for byte in sig:
+          lineHex += "["+str(hex(ord(byte))[2:])+"]"
+        print "RESPONSE:"
+        print lineHex
+        self.serial.write(bytearray(sig.decode("hex")))
+      if self.handshake_finished:
+        termino = True
+        r = self.getDataNextFor(lineHex)
+        if r:
+			self.serial.write(bytearray(r.decode("hex")))
+        
+      #time.sleep(1)
 
 
 inversor = InversorSimulator()
 
-inversor.iniciarlizar( "/dev/pts/10" , 9600, 0.1 )
+inversor.iniciarlizar( "/dev/ttyS0" , 9600, 0.1 )
 
 inversor.work_forever()
 
