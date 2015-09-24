@@ -2,6 +2,7 @@
 import serial
 import time
 import binascii
+import random
 
 
 def read_serial(ser):
@@ -12,6 +13,19 @@ def read_serial(ser):
     if buf != '':
       return buf
 
+def int_to_bytes(i): #transforma a hexadecimal cadenas de largas, para 1 byte usar ord(byte)
+  return format(i, 'x')
+
+def bytes_to_int(bytes): #transforma a hexadecimal cadenas de largas, para 1 byte usar ord(byte)
+  return int(bytes.encode('hex'), 16)
+
+
+def checksum(bytes):
+    suma = 0
+    for b in bytes:
+        suma += ord(b)
+    return suma
+
 class InversorSimulator () :
   state = 0
   msg_index = 0
@@ -19,6 +33,21 @@ class InversorSimulator () :
   baud_rate = 9600
   timeout = 0.1
   handshake_finished = False
+
+  lastEnergyToday = 0
+  incrementET = 1
+
+  lastIAC = 5.0
+  varIAC = 1.0
+  minIAC = 0.0
+  maxIAC = 10.0
+
+  lastPAC = 500
+  varPAC = 2
+  minPAC = 0
+  maxPAC = 1000
+
+  read_index = 0
 
   strategy = "static"
 
@@ -64,13 +93,23 @@ class InversorSimulator () :
   "[aa][aa][1][0][0][1][1][4][0][1][5b]" : 5
   }
 
+
+  handshake_send = [
+  ["59aa010000000000000155"],
+  ["aaaa0100000000010b3131313131313131202001032a"],
+  ["aaaa01000001010300015a"],
+  ["aaaa010000010100000157"],
+  ["aaaa010000010101000158"],
+  ["aaaa01000001010400015b"]
+  ]
+
   def iniciarlizar(self, port, baud_rate, timeout):
     print "iniciando inversor..."
     self.port = port
     self.baud_rate = baud_rate
     self.timeout = timeout
     state = 0
-    self.serial = serial.Serial(port=port,baudrate=baud_rate,timeout=timeout)
+    #self.serial = serial.Serial(port=port,baudrate=baud_rate,timeout=timeout)
     print "abrio el puerto"
     return ""
 
@@ -119,10 +158,10 @@ class InversorSimulator () :
   
   def getNextFor(self,x):
     handshake_recieve = [
-    #aaaa0000010000800a3131313131313131202003a7
-    #aaaa0000010000800a50574e454421212120200400
-    #aaaa00010100018340312020343630305a302e30335056203436303020202020202020202050484f454e495854454320202020202031313131313131312020202020202020343530300e28
-    #aaaa00010100018340312020343630305a302e30335056203436303020202020202020202050484f454e495854454320202020202050574e45442121212020202020202020343530300e81
+    # Original: aaaa0000010000800a3131313131313131202003a7
+    # PWNED: aaaa0000010000800a50574e454421212120200400
+    # Original: aaaa00010100018340312020343630305a302e30335056203436303020202020202020202050484f454e495854454320202020202031313131313131312020202020202020343530300e28
+    # PWNED: aaaa00010100018340312020343630305a302e30335056203436303020202020202020202050484f454e495854454320202020202050574e45442121212020202020202020343530300e81
       ["aaaa0000010000800a50574e454421212120200400"],
       ["aaaa0000010000800a50574e454421212120200400"],
       ["aaaa000101000081010601de"],
@@ -134,8 +173,9 @@ class InversorSimulator () :
     i = 0
     if x == "[aa][aa][1][0][0][0][0][0][0][1][55]":
         i = 1
-        #[aa][aa][1][0][0][0][0][1][b][50][57][4e][45][44][21][21][21][20][20][1][3][83]
-        #aaaa0100000000010b50574e4544212121202001 -> 383
+        # Original: [aa][aa][0][0][1][0][0][80][a][31][31][31][31][31][31][31][31][20][20][3][a7]
+        # PWNED: [aa][aa][1][0][0][0][0][1][b][50][57][4e][45][44][21][21][21][20][20][1][3][83]
+        # aaaa0100000000010b50574e4544212121202001 -> 383
     elif x == "[aa][aa][1][0][0][0][0][1][b][50][57][4e][45][44][21][21][21][20][20][1][3][83]":
         i = 2
     elif x == "[aa][aa][1][0][0][1][1][3][0][1][5a]":
@@ -149,14 +189,110 @@ class InversorSimulator () :
         self.handshake_finished = True
     print "i es : ",i
     return handshake_recieve[i][0]
-    
+
+  # int getLastEnergyToday():
+  def getET(self):
+    self.lastEnergyToday += self.incrementET
+    return self.lastEnergyToday
+
+  # float getIAC():
+  def getIAC(self):
+    aux = self.lastIAC+random.uniform(-self.varIAC,self.varIAC)
+    if aux < self.maxIAC and aux > self.minIAC:
+      self.lastIAC = aux
+    return self.lastIAC
+
+  # int getPAC(int, int):
+  def getPAC(self):
+    aux = self.lastPAC = self.lastPAC+random.randint(-self.varPAC,self.varPAC)
+    if aux < self.maxPAC and aux > self.minPAC:
+      self.lastPAC = aux
+    return self.lastPAC
+
+  # string(hex) getHexIAC():
+  def getHexET(self):
+    return hex(int(self.getET()))[2:]
+
+  # string(hex) getHexIAC():
+  def getHexIAC(self):
+    return hex(int(self.getIAC()))[2:]
+
+  # string(hex) getHexIAC():
+  def getHexPAC(self):
+    return format(int(self.getPAC()), 'x')
+
+  def getChecksum(self,data):
+    return format(checksum(data), 'x')
+
+  def completeHexWith(self,length,h):
+    r = ""
+    for x in range(0,length-len(h)):
+      r += "0"
+    return r + h
+
+  def getNewHeader(self):
+    return "aaaa00010100018236"
+
+  def getNewBody(self):
+    # plantear strategy aca!
+    base = list("01ab00000aa40a9b0000003c003c03ab00000095083313900c7300000001b2c40000193b000100000000000000000000000000000000")
+    et = self.completeHexWith(4,self.getHexET())
+    base[28] = et[0]
+    base[29] = et[1]
+    base[30] = et[2]
+    base[31] = et[3]
+    iac = self.completeHexWith(4,self.getHexIAC())
+    base[38] = iac[0]
+    base[39] = iac[1]
+    base[40] = iac[2]
+    base[41] = iac[3]
+    pac = self.completeHexWith(4,self.getHexPAC())
+    base[50] = pac[0]
+    base[51] = pac[1]
+    base[52] = pac[2]
+    base[53] = pac[3]
+    return "".join(base)
+
   def getDataNextFor(self,x):
+    header_body = self.getNewHeader()+self.getNewBody()
+    hdf = header_body+hex(checksum(header_body))[2:]
     data_recieve = [
+      [hdf],
       ["aaaa0001010001823601ab00000aa40a9b0000003c003c03ab00000095083313900c7300000001b2c40000193b00010000000000000000000000000000000008f2"]
     ]
+    # data_recieve siendo usado:
     i = 0
     if x == "[aa][aa][1][0][0][1][1][2][0][1][59]":
-		return data_recieve[i][0]
+		  return data_recieve[i][0]
+
+  def simulateReadSerial(self):
+    value = ""
+    if not self.handshake_finished:
+      value = self.handshake_send[self.read_index][0]
+      if self.read_index < len(self.handshake_send)-1:
+        self.read_index += 1
+    else:
+      value = "aaaa010000010102000159"
+    return self.string_to_byte_array(value)
+
+
+  def string_to_byte_array(self, s):
+    """
+    r = 
+    for x in range(0,len(s)-1,2):
+      v = s[x]+s[x+1]
+      print "data: "+v
+      hex_data = hex_string.decode("hex")
+    """
+    hex_string = s
+    hex_data = hex_string.decode("hex")
+    return bytearray(hex_data)
+
+  def int_to_bytes(self,i):
+    return int_to_bytes(i)
+
+  def bytes_to_int(self, b):
+    return bytes_to_int(b)
 
   def work_forever(self):
     """
@@ -174,35 +310,42 @@ class InversorSimulator () :
     termino = False
     while True:
       print "entro al while"
-      rx = self.read_serial(self.serial)
+      # ENTRADA:
+      #rx = self.read_serial(self.serial)
+      rx = self.simulateReadSerial()
       print "lectura completa: "+rx
       lineOrd = ""
       lineHex = ""
       for byte in rx:
-#        lineOrd += "["+str(ord(byte))+"]"
-        lineHex += "["+str(hex(ord(byte))[2:])+"]"
+        #lineHex += "["+str(hex(ord(byte))[2:])+"]"
+        lineHex += "["+str(hex(byte)[2:])+"]"
 #      print "RX as Ordinal:"
 #      print lineOrd
       print "RX as Hexadecimal:"
       print lineHex
       #self.processMessage(rx)
-      sig = self.getNextFor(lineHex)
-      print self.handshake_finished
-      print termino
-      if not termino:
-        lineHex = ""
-        for byte in sig:
-          lineHex += "["+str(hex(ord(byte))[2:])+"]"
-        print "RESPONSE:"
-        print lineHex
-        self.serial.write(bytearray(sig.decode("hex")))
-      if self.handshake_finished:
-        termino = True
-        r = self.getDataNextFor(lineHex)
-        if r:
-			self.serial.write(bytearray(r.decode("hex")))
+      if not self.handshake_finished:
+        sig = self.getNextFor(lineHex)
+      else:
+        sig = self.getDataNextFor(lineHex)
+
+      print "handshake_finished: "+str(self.handshake_finished)
+      lineHex = ""
+      print sig
+      """for byte in sig:
+                          lineHex += "["+str(hex(ord(byte))[2:])+"]" """
+      for i in range(0,len(sig)-1,2):
+        lineHex += "["+sig[i:i+2]+"]"
+      print "RESPONSE:"
+      print lineHex
+      #SALIDA:
+      #self.serial.write(bytearray(sig.decode("hex")))
+      #####self.serial.write(self.string_to_byte_array(r))????
+      if sig:
+        #self.serial.write(bytearray(r.decode("hex")))
+        print sig
         
-      #time.sleep(1)
+      time.sleep(1)
 
 
 inversor = InversorSimulator()
