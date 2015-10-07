@@ -4,7 +4,6 @@ def bytes_to_int(bytes): #transforma a hexadecimal cadenas de largas, para 1 byt
   return int(bytes, 16)
 
 def generateJson(bytes):
-    print("bytes::::",bytes[0:4])
     try:
         data = json.dumps({
         	#"a": ord(bytes[12]), 

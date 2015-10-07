@@ -6,6 +6,9 @@ import random
 import pprint
 import dataParser
 
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+
 
 def read_serial(ser):
   buf = ''
@@ -365,15 +368,20 @@ class InversorSimulator () :
       print "lectura completa: "+rx
       lineOrd = ""
       lineHex = ""
+      crudo = ""
       for byte in rx:
         #Print SERIAL READ
         #lineHex += "["+str(hex(ord(byte))[2:])+"]"
         #print lineHex
         #Print SIMULATED
-        lineHex += "["+str(hex(byte)[2:])+"]"
+        c = str(hex(byte)[2:])
+        crudo += c
+        lineHex += "["+c+"]"
         pass
       #print "RX as Ordinal:"
       #print lineOrd
+
+
       print "RX as Hexadecimal:"
       print lineHex
       #self.processMessage(rx)
@@ -400,6 +408,16 @@ class InversorSimulator () :
         print lineHex
         #SALIDA:
         #self.serial.write(bytearray(sig.decode("hex")))
+
+      client = MongoClient('mongodb://localhost:27017/')
+      db = client.serial_database
+      oi = ObjectId()
+      print oi
+      db.reads.update(
+              { "_id": oi },
+              { "data": sig },
+              upsert=True
+          )
 
       time.sleep(1)
         

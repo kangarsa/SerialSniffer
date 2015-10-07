@@ -46,14 +46,17 @@ class MyRequestHandler (BaseHTTPRequestHandler) :
             #send response:
             #query = ("SELECT * FROM lecturas ORDER BY id DESC LIMIT 1")
             #cursor.execute(query)
-            last = db.reads.find().sort({_id:-1}).limit(1)
-            print last
+            last = db.reads.find().sort([("_id",-1)]).limit(1)
+            for x in last:
+                elemento = x
             response = ""
-            f = open("last_data_raw")
-            txt = f.read()
+            print elemento
+            #f = open("last_data_raw")
+            #txt = f.read()
+            txt = elemento['data']
             response += dataParser.generateJson(txt)
             print response
-            f.close()
+            #f.close()
             self.wfile.write(response)
             #for (iden,ts,value) in cursor:
             #    response = "id: {}, fecha: {:%d %b %Y}, value: {}".format(iden,ts,value)                
