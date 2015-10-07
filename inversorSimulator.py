@@ -31,7 +31,6 @@ def bytes_to_int(bytes): #transforma a hexadecimal cadenas de largas, para 1 byt
 def checksum(b):
   suma = 0
   for x in range(0,len(b),2):
-    print b[x:x+2],bytes_to_int(b[x:x+2])
     suma += bytes_to_int(b[x:x+2])
   return suma
 
@@ -123,7 +122,7 @@ class InversorSimulator () :
     self.baud_rate = baud_rate
     self.timeout = timeout
     state = 0
-    self.serial = serial.Serial(port=port,baudrate=baud_rate,timeout=timeout)
+    #self.serial = serial.Serial(port=port,baudrate=baud_rate,timeout=timeout)
     print "abrio el puerto"
     return ""
 
@@ -259,37 +258,31 @@ class InversorSimulator () :
   def getNewBody(self):
     # plantear strategy aca!
     base = list("01ab00000aa40a9b0000003c003c03ab00000095083313900c7300000001b2c40000193b000100000000000000000000000000000000")
-    #et = self.completeHexWith(4,self.getHexET())
-    #base[28] = et[0]
-    #base[29] = et[1]
-    #base[30] = et[2]
-    #base[31] = et[3]
-    #sn = self.completeHexWith(4,self.getHexSN())
-    #base[46] = sn[0]
-    #base[47] = sn[1]
-    #base[48] = sn[2]
-    #base[49] = sn[3]
-    #iac = self.completeHexWith(4,self.getHexIAC())
-    #base[38] = iac[0]
-    #base[39] = iac[1]
-    #base[40] = iac[2]
-    #base[41] = iac[3]
-    #pac = self.completeHexWith(4,self.getHexPAC())
-    #base[50] = pac[0]
-    #base[51] = pac[1]
-    #base[52] = pac[2]
-    #base[53] = pac[3]
+    et = self.completeHexWith(4,self.getHexET())
+    base[28] = et[0]
+    base[29] = et[1]
+    base[30] = et[2]
+    base[31] = et[3]
+    iac = self.completeHexWith(4,self.getHexIAC())
+    base[38] = iac[0]
+    base[39] = iac[1]
+    base[40] = iac[2]
+    base[41] = iac[3]
+    pac = self.completeHexWith(4,self.getHexPAC())
+    base[50] = pac[0]
+    base[51] = pac[1]
+    base[52] = pac[2]
+    base[53] = pac[3]
     return "".join(base)
 
   def getDataNextFor(self,x):
     i = 0
     if x == "[aa][aa][1][0][0][1][1][2][0][1][59]":
       header_body = self.getNewHeader()+self.getNewBody()
-      print header_body
-      cs = hex(checksum(header_body))
-      print cs
-      #hdf = header_body+hex(checksum(header_body))[2:]
-      hdf = header_body+"08f2"
+      #print header_body
+      cs = self.completeHexWith(4,hex(checksum(header_body))[2:])
+      #print cs
+      hdf = header_body+cs
       data_recieve = [
         [hdf],
         ["aaaa0001010001823601ab00000aa40a9b0000003c003c03ab00000095083313900c7300000001b2c40000193b00010000000000000000000000000000000008f2"],
@@ -373,10 +366,12 @@ class InversorSimulator () :
       lineOrd = ""
       lineHex = ""
       for byte in rx:
-        lineHex += "["+str(hex(ord(byte))[2:])+"]"
+        #Print SERIAL READ
+        #lineHex += "["+str(hex(ord(byte))[2:])+"]"
         #print lineHex
-        #lineHex += "["+str(hex(byte)[2:])+"]"
-        #pass
+        #Print SIMULATED
+        lineHex += "["+str(hex(byte)[2:])+"]"
+        pass
       #print "RX as Ordinal:"
       #print lineOrd
       print "RX as Hexadecimal:"
@@ -404,12 +399,9 @@ class InversorSimulator () :
         print "RESPONSE:"
         print lineHex
         #SALIDA:
-        self.serial.write(bytearray(sig.decode("hex")))
-        #####self.serial.write(self.string_to_byte_array(r))????
-          #self.serial.write(bytearray(r.decode("hex")))
-        #print sig
+        #self.serial.write(bytearray(sig.decode("hex")))
 
-
+      time.sleep(1)
         
       #time.sleep(1)
 
@@ -417,10 +409,7 @@ class InversorSimulator () :
 inversor = InversorSimulator()
 
 #inversor.iniciarlizar( "/dev/pts/0" , 9600, 0.1 )
-#inversor.iniciarlizar( "/dev/ttyS0" , 9600, 0.05 )
+inversor.iniciarlizar( "/dev/ttyS0" , 9600, 0.05 )
 
-#inversor.work_forever()
-
-print checksum("aa")
-print checksum("aaaa")
+inversor.work_forever()
 
