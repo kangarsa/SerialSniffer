@@ -1,16 +1,23 @@
 import json
 
 def bytes_to_int(bytes): #transforma a hexadecimal cadenas de largas, para 1 byte usar ord(byte)
-  return int(bytes.encode('hex'), 16)
+  return int(bytes, 16)
 
 def generateJson(bytes):
-    data = json.dumps({
-    	"a": ord(bytes[12]), 
-    	"b": bytes_to_int(bytes[22:24]), 
-    	"temperature": bytes_to_int(bytes[9:11])/10.0, 
-    	"checksum": check_checksum(bytes), 
-    	"length": check_length(bytes)
-    	})
+    print("bytes::::",bytes[0:4])
+    try:
+        data = json.dumps({
+        	#"a": ord(bytes[12]), 
+            "energia_total": bytes_to_int(bytes[46:50]), 
+            "corriente_acumulada": bytes_to_int(bytes[56:60]), 
+            "potencia_acumulada": bytes_to_int(bytes[68:72])
+            #"prueba": bytes_to_int("ffff") 
+        	#"temperature": bytes_to_int(bytes[9:11])/10.0, 
+        	#"checksum": check_checksum(bytes), 
+        	#"length": check_length(bytes)
+        	})
+    except:
+        data = json.dumps({})
     return data
 
 def saveJson(data,json_file):

@@ -2,6 +2,8 @@ import serial
 #import serialdb
 import dataParser
 from optparse import OptionParser
+from pymongo import MongoClient
+from bson.objectid import ObjectId
 
 parser = OptionParser()
 parser.add_option("-p", "--port", 
@@ -49,20 +51,32 @@ ser = serial.Serial(port=s_port,baudrate=b_rate,timeout=t_out)
 #db = serialdb.connect(host,user,passwd,db,unix_socket)
 #cursor = db.cursor()
 
+client = MongoClient('mongodb://localhost:27017/')
+db = client.serial_database
+
 while True:
     rx = read_serial(ser)
- PWNED!INV
-    lineOrd = ""
+    #lineOrd = ""
     lineHex = ""
     for byte in rx:
-        lineOrd += "["+str(ord(byte))+"]"
+        #lineOrd += "["+str(ord(byte))+"]"
         lineHex += "["+str(hex(ord(byte))[2:])+"]"
-    print "RX as Ordinal:"
-    print lineOrd
+    #print "RX as Ordinal:"
+    #print lineOrd
     print "RX as Hexadecimal:"
     print lineHex
     print "Suma:",dataParser.checksum(rx[:-2])
     print "\n"
+    #db.reads
+
+    db.reads.update(
+            { "_id": ObjectId() },
+            { "data": lineHex },
+            upsert=True
+        )
+
+    #find().sort({_id:1}).limit(50);
+
     #dataParser.saveJson(dataParser.generateJson(rx),json_file)
     #serialdb.save(db,cursor,rx)
 
