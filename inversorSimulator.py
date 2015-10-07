@@ -6,8 +6,8 @@ import random
 import pprint
 import dataParser
 
-from pymongo import MongoClient
-from bson.objectid import ObjectId
+#from pymongo import MongoClient
+#from bson.objectid import ObjectId
 
 
 def read_serial(ser):
@@ -48,18 +48,24 @@ class InversorSimulator () :
   secNumber = 910
   incrementSecNumber = 1
 
-  lastEnergyToday = 910
+  lastEnergyToday = 0
   incrementET = 1
+  
+  lastEnergyTotal = 10532
+  incrementETotal = 1
 
-  lastIAC = 5.0
+  lastIAC = 50.0
   varIAC = 0.0
-  minIAC = 5.0
-  maxIAC = 5.0
+  minIAC = 10.0
+  maxIAC = 100.0
 
-  lastPAC = 500
+  lastPAC = 1100
   varPAC = 0
-  minPAC = 500
-  maxPAC = 500
+  minPAC = 200
+  maxPAC = 4500
+  
+  varPercentLast = 0.01
+  varPercentMax = 0.2
 
   read_index = 0
   
@@ -125,7 +131,7 @@ class InversorSimulator () :
     self.baud_rate = baud_rate
     self.timeout = timeout
     state = 0
-    #self.serial = serial.Serial(port=port,baudrate=baud_rate,timeout=timeout)
+    self.serial = serial.Serial(port=port,baudrate=baud_rate,timeout=timeout)
     print "abrio el puerto"
     return ""
 
@@ -211,32 +217,52 @@ class InversorSimulator () :
     self.lastEnergyToday += self.incrementET
     return self.lastEnergyToday
     
+  # int getLastEnergyTotal():
+  def getETotal(self):
+    self.lastEnergyTotal += self.incrementETotal
+    return self.lastEnergyTotal
+    
   # int getSecNumber():
   def getSecNumber(self):
     self.secNumber += self.incrementSecNumber
     return self.secNumber
+    
+  def randomChange(self):
+    self.varPercentLast = random.uniform(-self.varPercentMax,self.varPercentMax)
+    print "RAND:: ", self.varPercentLast
+    #if aux < self.varPercentMax and aux > self.varPercentMax:
+    #  self.varPercentLast = aux
+    return self.varPercentLast
 
   # float getIAC():
   def getIAC(self):
-    aux = self.lastIAC+random.uniform(-self.varIAC,self.varIAC)
+    #aux = self.lastIAC+random.uniform(-self.varIAC,self.varIAC)
+    aux = self.lastIAC+(self.lastIAC*self.varPercentLast)
     if aux < self.maxIAC and aux > self.minIAC:
       self.lastIAC = aux
+    print "IAC: ",self.lastIAC
     return self.lastIAC
 
   # int getPAC(int, int):
   def getPAC(self):
-    aux = self.lastPAC = self.lastPAC+random.randint(-self.varPAC,self.varPAC)
+    #aux = self.lastPAC = self.lastPAC+random.randint(-self.varPAC,self.varPAC)
+    aux = int(self.lastPAC+(self.lastPAC*self.varPercentLast))
     if aux < self.maxPAC and aux > self.minPAC:
       self.lastPAC = aux
+    print "PAC: ",self.lastPAC
     return self.lastPAC
 
   # string(hex) getHexIAC():
   def getHexSN(self):
     return hex(int(self.getSecNumber()))[2:]
     
-  # string(hex) getHexIAC():
+  # string(hex) getHexET():
   def getHexET(self):
     return hex(int(self.getET()))[2:]
+    
+  # string(hex) getHexETotal():
+  def getHexETotal(self):
+    return hex(int(self.getETotal()))[2:]
 
   # string(hex) getHexIAC():
   def getHexIAC(self):
@@ -260,6 +286,7 @@ class InversorSimulator () :
 
   def getNewBody(self):
     # plantear strategy aca!
+    self.randomChange()
     base = list("01ab00000aa40a9b0000003c003c03ab00000095083313900c7300000001b2c40000193b000100000000000000000000000000000000")
     et = self.completeHexWith(4,self.getHexET())
     base[28] = et[0]
@@ -267,15 +294,24 @@ class InversorSimulator () :
     base[30] = et[2]
     base[31] = et[3]
     iac = self.completeHexWith(4,self.getHexIAC())
-    base[38] = iac[0]
-    base[39] = iac[1]
-    base[40] = iac[2]
-    base[41] = iac[3]
+    base[36] = iac[0]
+    base[37] = iac[1]
+    base[38] = iac[2]
+    base[39] = iac[3]
     pac = self.completeHexWith(4,self.getHexPAC())
-    base[50] = pac[0]
-    base[51] = pac[1]
-    base[52] = pac[2]
-    base[53] = pac[3]
+    base[48] = pac[0]
+    base[49] = pac[1]
+    base[50] = pac[2]
+    base[51] = pac[3]
+    etotal = self.completeHexWith(8,self.getHexETotal())
+    base[56] = etotal[0]
+    base[57] = etotal[1]
+    base[58] = etotal[2]
+    base[59] = etotal[3]
+    base[60] = etotal[4]
+    base[61] = etotal[5]
+    base[62] = etotal[6]
+    base[63] = etotal[7]
     return "".join(base)
 
   def getDataNextFor(self,x):
@@ -363,18 +399,19 @@ class InversorSimulator () :
     while True:
       print "entro al while"
       # ENTRADA:
-      #rx = self.read_serial(self.serial)
-      rx = self.simulateReadSerial()
+      rx = self.read_serial(self.serial)
+      #rx = self.simulateReadSerial()
       print "lectura completa: "+rx
       lineOrd = ""
       lineHex = ""
       crudo = ""
       for byte in rx:
         #Print SERIAL READ
+        c = str(hex(ord(byte))[2:])
         #lineHex += "["+str(hex(ord(byte))[2:])+"]"
         #print lineHex
         #Print SIMULATED
-        c = str(hex(byte)[2:])
+        #c = str(hex(byte)[2:])
         crudo += c
         lineHex += "["+c+"]"
         pass
@@ -407,19 +444,17 @@ class InversorSimulator () :
         print "RESPONSE:"
         print lineHex
         #SALIDA:
-        #self.serial.write(bytearray(sig.decode("hex")))
+        self.serial.write(bytearray(sig.decode("hex")))
 
-      client = MongoClient('mongodb://localhost:27017/')
-      db = client.serial_database
-      oi = ObjectId()
-      print oi
-      db.reads.update(
-              { "_id": oi },
-              { "data": sig },
-              upsert=True
-          )
-
-      time.sleep(1)
+      #client = MongoClient('mongodb://localhost:27017/')
+      #db = client.serial_database
+      #oi = ObjectId()
+      #print oi
+      #db.reads.update(
+      #        { "_id": oi },
+      #        { "data": sig },
+      #        upsert=True
+      #    )
         
       #time.sleep(1)
 
