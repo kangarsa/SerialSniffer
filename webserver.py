@@ -37,6 +37,7 @@ class MyRequestHandler (BaseHTTPRequestHandler) :
         self.send_response(200)
         #send headers:
         self.send_header("Content-type:", "text/html")
+        self.send_header('Access-Control-Allow-Origin', '*')
         # send a blank line to end headers:
         self.wfile.write("\n")
         #cursor = cnx.cursor()
@@ -66,11 +67,34 @@ class MyRequestHandler (BaseHTTPRequestHandler) :
             #cursor.close()
             #json.dump(data, self.wfile)
         elif 'historico' in self.path[1:10]:
-            #???
+            ts1 = self.path[11:21]
+            ts2 = self.path[22:33]
+            salto = 3600
+            elementos = []
+            #print ts2
+            for hora in range(int(ts1),int(ts2),salto):
+                id1 = ObjectId(str(hex(hora))[2:]+"0000000000000000")
+                id2 = ObjectId(str(hex(hora+salto))[2:]+"0000000000000000")
+                last = db.reads.find({"_id" : {"$gt":id1,"$lt":id2}}).limit(1)
+                for x in last:
+                    elem = dataParser.generateDict(x['data'])
+                    elem["time"] = str(x['_id'].generation_time)
+                    elementos.append(elem)
+            #for x in range(0,last.count(),360):#int(last.count()/24)):
+            #    elementos.append(dataParser.generateDict(last[x]['data']))
+            response = ""
+            print elementos
+            #f = open("last_data_raw")
+            #txt = f.read()
+            txt = ""#elemento['data']
+            #response += dataParser.generateJson(txt)
+            response = json.dumps({"elementos":elementos}) #json.dumps({"elementos":elementos})
+            print response
+            #f.close()
+            self.wfile.write(response)
             print "hola"
 
     def end_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
         http.server.SimpleHTTPRequestHandler.end_headers(self)
 
 server = HTTPServer(("", port), MyRequestHandler)

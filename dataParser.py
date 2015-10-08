@@ -6,17 +6,35 @@ def bytes_to_int(bytes): #transforma a hexadecimal cadenas de largas, para 1 byt
 def generateJson(bytes):
     try:
         data = json.dumps({
-        	#"a": ord(bytes[12]), 
-            "energia_total": bytes_to_int(bytes[46:50]), 
-            "corriente_acumulada": bytes_to_int(bytes[56:60]), 
-            "potencia_acumulada": bytes_to_int(bytes[68:72])
+            #"a": ord(bytes[12]), 
+            "energia_hoy": bytes_to_int(bytes[46:50]), 
+            "corriente": bytes_to_int(bytes[54:58]), 
+            "potencia": bytes_to_int(bytes[66:70]),
+            "energia_total": bytes_to_int(bytes[74:82])
             #"prueba": bytes_to_int("ffff") 
-        	#"temperature": bytes_to_int(bytes[9:11])/10.0, 
-        	#"checksum": check_checksum(bytes), 
-        	#"length": check_length(bytes)
-        	})
+            #"temperature": bytes_to_int(bytes[9:11])/10.0, 
+            #"checksum": check_checksum(bytes), 
+            #"length": check_length(bytes)
+            })
     except:
         data = json.dumps({})
+    return data
+
+def generateDict(bytes):
+    try:
+        data = {
+            #"a": ord(bytes[12]), 
+            "energia_hoy": bytes_to_int(bytes[46:50]), 
+            "corriente": bytes_to_int(bytes[54:58]), 
+            "potencia": bytes_to_int(bytes[66:70]),
+            "energia_total": bytes_to_int(bytes[74:82])
+            #"prueba": bytes_to_int("ffff") 
+            #"temperature": bytes_to_int(bytes[9:11])/10.0, 
+            #"checksum": check_checksum(bytes), 
+            #"length": check_length(bytes)
+            }
+    except:
+        data = {}
     return data
 
 def saveJson(data,json_file):
